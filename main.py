@@ -1,3 +1,4 @@
+cat << 'EOF' > main.py
 import os
 import asyncio
 import subprocess
@@ -7,15 +8,17 @@ from aiogram.filters import CommandStart
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, FSInputFile
 from aiohttp import web
 
-# FFmpeg-ni sozlash
+# FFmpeg sozlash
 static_ffmpeg.add_paths()
 
-BOT_TOKEN = os.getenv("BOT_TOKEN")
+# Token kiritildi
+BOT_TOKEN = os.getenv("BOT_TOKEN", "8812400934:AAF869ayjhcqdmK3APrqsby-pr0uMVDpqgg")
+
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
+
 user_languages = {}
 
-# Matnlar to'plami
 TEXTS = {
     "description": {
         "uz": "✅ Til o'zgartirildi! \n\nMen nimalar qila olaman? \n🎵 Ovozli xabarlaringizni MP3 formatiga o'tkazib beraman.\n🎤 Menga shunchaki ovozli xabar yuboring, qolganini o'zim bajaraman.",
@@ -45,7 +48,6 @@ async def process_language_choice(callback: types.CallbackQuery):
     lang_code = callback.data.split("_")[1]
     user_languages[callback.from_user.id] = lang_code
     
-    # Endi "Til o'zgartirildi" o'rniga tushuntirish xabarini yuboramiz
     description_text = TEXTS["description"].get(lang_code, "Language changed!")
     await callback.message.edit_text(description_text)
     await callback.answer()
@@ -79,18 +81,22 @@ async def process_audio(message: types.Message):
     if os.path.exists(ogg_path): os.remove(ogg_path)
     if os.path.exists(mp3_path): os.remove(mp3_path)
 
-async def start_web_server():
-    app = web.Application()
-    app.router.add_get('/', lambda r: web.Response(text="Bot is running!"))
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, '0.0.0.0', int(os.environ.get("PORT", 8080)))
-    await site.start()
+async def handle_ping(request):
+    return web.Response(text="Bot is active")
 
 async def main():
-    await start_web_server()
+    app = web.Application()
+    app.router.add_get('/', handle_ping)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    
+    port = int(os.environ.get("PORT", 8080))
+    site = web.TCPSite(runner, '0.0.0.0', port)
+    await site.start()
+    
+    await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
     asyncio.run(main())
-
+EOF
